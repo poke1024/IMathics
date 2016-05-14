@@ -173,3 +173,12 @@ class MathicsKernel(Kernel):
                     end_pos = scanner.lexer.lexpos
                 break
         return start_pos, end_pos, name
+
+    @property
+    def kernel_info(self):
+        info = super(MathicsKernel, self).kernel_info
+        # tell Jupyter about our MathML needs.
+        info['mathjax'] = {'options': {'processSectionDelay': 0}, 'config':
+            {'messageStyle': "none", 'jax': ["input/MathML", "output/CommonHTML"],
+             'extensions': ["mml2jax.js", "AssistiveMML.js"]}}
+        return info
