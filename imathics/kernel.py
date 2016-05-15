@@ -177,7 +177,14 @@ class MathicsKernel(Kernel):
     @property
     def kernel_info(self):
         info = super(MathicsKernel, self).kernel_info
-        # tell Jupyter about our MathML needs.
+        # tell Jupyter about our MathML needs. Set HTML-CSS/webFont to null cause
+        # the Jupyter default causes Chrome to work havoc with MathJax.
         info['mathjax'] = {'options': {'processSectionDelay': 0}, 'config':
-            {'config': ['MML_HTMLorMML-full.js'], 'messageStyle': "none"}}
+            {'config': ['TeX-AMS_HTML-full.js', 'Safe.js'],
+             'HTML-CSS': {'webFont': None},
+             'messageStyle': "none", 'jax': ["input/MathML", "output/CommonHTML"],
+             'extensions': ["mml2jax.js", "AssistiveMML.js"]}}
+
+        #
+
         return info
