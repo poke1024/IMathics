@@ -179,6 +179,5 @@ class MathicsKernel(Kernel):
         info = super(MathicsKernel, self).kernel_info
         # tell Jupyter about our MathML needs.
         info['mathjax'] = {'options': {'processSectionDelay': 0}, 'config':
-            {'messageStyle': "none", 'jax': ["input/MathML", "output/CommonHTML"],
-             'extensions': ["mml2jax.js", "AssistiveMML.js"]}}
+            {'config': ['MML_HTMLorMML-full.js'], 'messageStyle': "none"}}
         return info
