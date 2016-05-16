@@ -1,0 +1,5 @@
+Type: IPython Notebook Extension
+Name: imathics
+Description: Adds functionality to Jupyter needed for IMathics
+Main: imathics.js
+Compatibility: 4.x

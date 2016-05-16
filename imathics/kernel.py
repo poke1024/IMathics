@@ -69,39 +69,16 @@ class MathicsKernel(Kernel):
         self.send_response(self.iopub_socket, 'stream', content)
 
     def result_callback(self, result):
-        mathics_js = ""
-
-        with open(os.path.dirname(os.path.abspath(__file__)) + '/mathics.js', 'r') as f:
-            mathics_js += f.read()
-
         html = result.data['text/html']
 
-        js = "<span id='myAnchor'></span><script>" + mathics_js + """var f = function() {
-
-        var myAnchor = document.getElementById("myAnchor");
-        var el = document.createElement('span');
-
-        var node = createLine(window.atob('""" + base64.b64encode(html.encode('utf8')).decode('ascii') + """'));
-
-        /*el.innerHTML = "<span>oh my test</span>";*/
-
-        myAnchor.parentNode.replaceChild(node, myAnchor);
-
-        /*myAnchor.appendChild(el);*/
-
-        }; f();
-
-        </script>
-        """   # result.data['text/html'])
-
-        # js = "var cell = Jupyter.notebook.insert_cell_at_bottom('markdown'); cell.set_text(text);"
-        # js = "<script>Jupyter.notebook.get_selected_cell().set_text('hello!');</script>"
-
-        data = {'text/html': js}
+        # FIXME: check for absence of Mathics.display
+        js = "<span id='output_anchor'></span><script>" +\
+             "window.Mathics.display('output_anchor', '" +\
+             base64.b64encode(html.encode('utf8')).decode('ascii') + "');</script>"
 
         content = {
             'execution_count': result.line_no,
-            'data': data,  # result.data,
+            'data': {'text/html': js},
             'metadata': result.metadata,
         }
         self.send_response(self.iopub_socket, 'execute_result', content)
