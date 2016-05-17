@@ -72,13 +72,17 @@ class MathicsKernel(Kernel):
         html = result.data['text/html']
 
         # FIXME: check for absence of Mathics.display
-        js = "<span id='output_anchor'></span><script>" +\
-             "window.Mathics.display('output_anchor', '" +\
-             base64.b64encode(html.encode('utf8')).decode('ascii') + "');</script>"
+        js = """
+        <script>
+            requirejs(['nbextensions/imathics/imathics'], function(imathics) {
+                imathics.display('output_anchor', '%s');
+            });
+        </script>
+        """ % base64.b64encode(html.encode('utf8')).decode('ascii')
 
         content = {
             'execution_count': result.line_no,
-            'data': {'text/html': js},
+            'data': {'text/html': "<span id='output_anchor'></span>" + js},
             'metadata': result.metadata,
         }
         self.send_response(self.iopub_socket, 'execute_result', content)

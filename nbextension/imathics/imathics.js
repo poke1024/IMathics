@@ -247,7 +247,9 @@ define([
 		if (nodeName == 'graphics3d') {
 			var data = evalJSON(element.getAttribute('data'));
 			var div = document.createElement('div');
-			drawGraphics3D(div, data);
+			requirejs(['nbextensions/imathics/graphics3d'], function(graphics3d) {
+			    graphics3d.drawGraphics3D(div, data);
+			});
 			dom = div;
 		}
 		if (nodeName == 'svg' || nodeName == 'graphics3d' || nodeName == 'img') {
@@ -446,15 +448,14 @@ define([
 	    anchor.parentNode.replaceChild(node, output_anchor);
 	}
 
-
     var load_jupyter_extension = function() {
-        alert('here we are then');
-        window.Mathics = {'display': mathicsDisplay};
+        // alert('here we are then');
     };
 
     var extension = {
         'load_jupyter_extension': load_jupyter_extension,
-        'load_ipython_extension': load_jupyter_extension
+        'load_ipython_extension': load_jupyter_extension,
+        'display': mathicsDisplay
     };
     return extension;
 });
