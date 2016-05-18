@@ -445,7 +445,7 @@ define([
 	function mathicsDisplay(anchorId, htmlBase64) { // Mathics.display
 	    var anchor = document.getElementById(anchorId);
 	    var node = createLine(window.atob(htmlBase64));
-	    anchor.parentNode.replaceChild(node, output_anchor);
+	    anchor.parentNode.replaceChild(node, anchor);
 	}
 
     var load_jupyter_extension = function() {
