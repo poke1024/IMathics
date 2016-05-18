@@ -13,7 +13,12 @@ from mathics.version import __version__
 from mathics.doc.doc import Doc
 import os
 import base64
+from datetime import datetime, timezone, timedelta
 
+
+def _timestamp_micros():
+    zero = datetime(1970, 1, 1, tzinfo=timezone.utc)
+    return (datetime.now(timezone.utc) - zero) // timedelta(microseconds=1)
 
 class MathicsKernel(Kernel):
     implementation = 'Mathics'
@@ -71,18 +76,22 @@ class MathicsKernel(Kernel):
     def result_callback(self, result):
         html = result.data['text/html']
 
-        # FIXME: check for absence of Mathics.display
+        anchor_name = 'output_anchor_' + str(_timestamp_micros())
+
         js = """
         <script>
             requirejs(['nbextensions/imathics/imathics'], function(imathics) {
-                imathics.display('output_anchor', '%s');
+                imathics.display('%s', '%s');
+            }, function (err) {
+                document.getElementById('%s').innerHTML = '<span style="color:red;">' +
+                    'The Jupyter nbextension for Mathics was not found. Please reinstall imathics.</span>';
             });
         </script>
-        """ % base64.b64encode(html.encode('utf8')).decode('ascii')
+        """ % (anchor_name, base64.b64encode(html.encode('utf8')).decode('ascii'), anchor_name)
 
         content = {
             'execution_count': result.line_no,
-            'data': {'text/html': "<span id='output_anchor'></span>" + js},
+            'data': {'text/html': ("<span id='%s'></span>" % anchor_name) + js},
             'metadata': result.metadata,
         }
         self.send_response(self.iopub_socket, 'execute_result', content)
