@@ -10,8 +10,10 @@ define([
 	// for the general approach of replacing <mspace> elements with <svg> and <img>, see here:
 	// https://groups.google.com/forum/#!topic/mathjax-users/YO2MMOiYcVo
 
-    MathJax.Hub.processSectionDelay = 0; // removes jittering and flickering from Manipulate[]
-    // and generally makes output immediate and fast, instead of slow and considerably delayed
+    MathJax.Hub.processSectionDelay = 1; // removes jittering and flickering from Manipulate[]
+    // and generally makes output immediate and fast, instead of slow and considerably delayed.
+    // must not set the value above to 0, as it seems to break e.g. Graphics[Circle[]] (might
+    // be related to the way we requeue elements, see relayout() and state.retries below).
 
 	function $A(iterable) {
 	  if (!iterable) return [];
