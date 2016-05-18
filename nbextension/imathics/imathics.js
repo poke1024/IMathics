@@ -7,21 +7,11 @@ define([
 ) {
     "use_strict";
 
-    /*
-	IMPORTANT
+	// for the general approach of replacing <mspace> elements with <svg> and <img>, see here:
+	// https://groups.google.com/forum/#!topic/mathjax-users/YO2MMOiYcVo
 
-	in order for mathjax hub queue to work, Jupyter must _not_ set its web font to "STIX-Web"
-
-    "HTML-CSS": {
-        availableFonts: [],
-        imageFont: null,
-        preferredFont: null,
-        webFont: null,
-        styles: {'.MathJax_Display': {"margin": 0}},
-        linebreaks: { automatic: true }
-    },
-
-	*/
+    MathJax.Hub.processSectionDelay = 0; // removes jittering and flickering from Manipulate[]
+    // and generally makes output immediate and fast, instead of slow and considerably delayed
 
 	function $A(iterable) {
 	  if (!iterable) return [];
