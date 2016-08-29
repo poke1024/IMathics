@@ -2,7 +2,7 @@ import sys
 import traceback
 
 from ipykernel.kernelbase import Kernel
-from ipykernel.comm import CommManager
+from ipykernel.comm import CommManager, Comm
 
 from mathics.core.definitions import Definitions
 from mathics.core.evaluation import Evaluation, Message, Result, Output
@@ -19,6 +19,8 @@ from mathics.doc.doc import Doc
 from string import Template
 import os
 import base64
+import queue
+from threading import Thread
 
 
 def parse_lines(lines, definitions):
@@ -72,8 +74,9 @@ class KernelOutput(Output):
         </svg>
     ''')
 
-    def __init__(self, kernel):
+    def __init__(self, kernel, socket):
         self.kernel = kernel
+        self.socket = socket
 
     def out(self, out):
         self.kernel.out_callback(out)
@@ -83,6 +86,9 @@ class KernelOutput(Output):
 
     def display_data(self, result):
         self.kernel.display_data_callback(result)
+
+    def mathml_to_svg(self, mathml):
+        return self.socket.query(mathml)
 
     def svg_xml(self, data, width, height, viewbox):
         # relies on https://github.com/jupyter/notebook/pull/1680
@@ -102,6 +108,25 @@ class KernelOutput(Output):
             data)
 
 
+class MathicsSocket(object):
+    def __init__(self, comm):
+        self.comm = comm
+        comm.on_msg(self.on_msg)
+        self.queue = queue.Queue(1)
+
+    def query(self, message):
+        self.comm.send(message)
+        with open('/Users/bernhard/bla', 'a+') as f:
+            f.write("wait for queue\n")
+        x = self.queue.get()
+        with open('/Users/bernhard/bla', 'a+') as f:
+            f.write("queue done: " + repr(x) + "\n")
+        return x
+
+    def on_msg(self, msg):
+        self.queue.put(msg)
+
+
 class MathicsKernel(Kernel):
     implementation = 'Mathics'
     implementation_version = '0.1'
@@ -117,16 +142,31 @@ class MathicsKernel(Kernel):
         self.definitions = Definitions(add_builtin=True)        # TODO Cache
         self.definitions.set_ownvalue('$Line', Integer(0))  # Reset the line number
         self.establish_comm_manager()  # needed for ipywidgets and Manipulate[]
+        self.mathics_socket = None
 
     def establish_comm_manager(self):
         self.comm_manager = CommManager(parent=self, kernel=self)
         comm_msg_types = ['comm_open', 'comm_msg', 'comm_close']
+        self.shell = None
         for msg_type in comm_msg_types:
             self.shell_handlers[msg_type] = getattr(self.comm_manager, msg_type)
+
+    def create_mathics_comm(self):
+        if self.mathics_socket is not None:
+            return
+
+        self.reconfigure_mathjax()
+
+        mathics_comm = Comm(target_name='mathics', data={})
+        self.comm_manager.register_comm(mathics_comm)
+
+        self.mathics_socket = MathicsSocket(mathics_comm)
 
     def do_execute(self, code, silent, store_history=True, user_expressions=None,
                    allow_stdin=False):
         # TODO update user definitions
+
+        self.create_mathics_comm()
 
         response = {
             'payload': [],
@@ -139,20 +179,34 @@ class MathicsKernel(Kernel):
             'text/latex': 'tex',
         }
 
-        evaluation = Evaluation(self.definitions, output=KernelOutput(self), format=formats)
-        try:
-            result = evaluation.parse_evaluate(code, timeout=settings.TIMEOUT)
-            if result:
-                self.result_callback(result)
-        except Exception as exc:
-            # internal error
-            response['status'] = 'error'
-            response['ename'] = 'System:exception'
-            response['traceback'] = traceback.format_exception(*sys.exc_info())
-            result = []
-        else:
-            response['status'] = 'ok'
-        response['execution_count'] = self.definitions.get_line_no()
+        execution_count = 1 + self.definitions.get_line_no()
+
+        def compute():
+            evaluation = Evaluation(self.definitions, output=KernelOutput(self, self.mathics_socket), format=formats)
+            try:
+                result = evaluation.parse_evaluate(code, timeout=settings.TIMEOUT)
+                with open('/Users/bernhard/bla', 'a+') as f:
+                    f.write("R: " + repr(result) + "/" + repr(result.result) + "\n")
+                if result:
+                    result.line_no = execution_count
+                    self.result_callback(result)
+            except Exception as exc:
+                pass
+                # internal error
+                #response['status'] = 'error'
+                #response['ename'] = 'System:exception'
+                #response['traceback'] = traceback.format_exception(*sys.exc_info())
+                #result = []
+            else:
+                pass
+
+        compute()
+
+        response['execution_count'] = execution_count
+        response['status'] = 'ok'
+
+        #thread = Thread(target=compute, args=())
+        #thread.start()
 
         return response
 
@@ -212,15 +266,26 @@ class MathicsKernel(Kernel):
 
         safeModeJS = """
             MathJax.Hub.Config({
-              Safe: {
-                  safeProtocols: {
-                    data: true
-                  },
-                  allow: {
-                    fontsize: "all"
-                  }
+                Safe: {
+                    safeProtocols: {
+                        data: true
+                    },
+                    allow: {
+                        fontsize: "all"
+                    }
                 }
-          });
+            });
+
+            Jupyter.notebook.kernel.comm_manager.register_target('mathics', function(comm, msg) {
+                console.log('opened comm');
+                console.log(msg);
+                // register callback
+                comm.on_msg(function(msg) {
+                    console.log('got msg');
+                    console.log(msg)
+                    comm.send(msg.content.data, {}, {}, msg.buffers);
+                });
+            });
         """
 
         # see http://jupyter-client.readthedocs.org/en/latest/messaging.html
